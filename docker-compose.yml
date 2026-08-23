@@ -1,0 +1,41 @@
+# Local test database - no MongoDB Atlas account needed to test the prototype.
+# Requires Docker Desktop (or Docker Engine + Compose plugin) on your machine.
+#
+# Usage:
+#   docker compose up -d
+#   docker compose down          (stop; data persists in the named volume)
+#   docker compose down -v       (stop AND wipe all data, for a clean retest)
+#
+# This is for LOCAL TESTING ONLY. Deployment still uses MongoDB Atlas as
+# documented in INSTALLATION.md Parts 2-4 - this file has no bearing on
+# production deployment and is not referenced anywhere in render.yaml.
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: loreal-ea-cmms-test-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_test_data:/data/db
+
+  # Optional web UI to eyeball seeded/test data in the browser at
+  # http://localhost:8081 (login admin / admin) - handy for a QC walkthrough
+  # without installing MongoDB Compass. Remove this service if you'd rather
+  # not run it.
+  mongo-express:
+    image: mongo-express:1
+    container_name: loreal-ea-cmms-test-mongo-ui
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+
+volumes:
+  mongo_test_data:

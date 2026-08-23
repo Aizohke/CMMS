@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import client from "../api/client";
 import StatusBadge from "../components/StatusBadge";
 
-const TABS = ["Critical Alerts", "Breakdown Log", "OEE Overview"];
+const TABS = ["Critical Alerts", "Breakdown Log", "OEE Overview", "Users"];
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState("Critical Alerts");
   return (
     <div className="content">
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {TABS.map((t) => (
           <button key={t} className={`btn ${tab === t ? "" : "secondary"}`} onClick={() => setTab(t)}>
             {t}
@@ -18,6 +18,7 @@ export default function AdminDashboard() {
       {tab === "Critical Alerts" && <CriticalAlertsTab />}
       {tab === "Breakdown Log" && <BreakdownLogTab />}
       {tab === "OEE Overview" && <OEEOverviewTab />}
+      {tab === "Users" && <UsersTab />}
     </div>
   );
 }
@@ -193,6 +194,147 @@ function OEEOverviewTab() {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// Account creation and role/line management - this was previously only
+// reachable via raw API calls (POST /api/users etc.), with no screen for
+// it. This tab is the answer to "how do I create an account."
+function UsersTab() {
+  const [users, setUsers] = useState([]);
+  const [lines, setLines] = useState([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "Captain", assignedLineId: "" });
+  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  async function load() {
+    const [usersRes, linesRes] = await Promise.all([
+      client.get("/users"),
+      client.get("/lines"),
+    ]);
+    setUsers(usersRes.data);
+    setLines(linesRes.data);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function handleCreate(e) {
+    e.preventDefault();
+    setError("");
+    setCreating(true);
+    try {
+      await client.post("/users", {
+        ...form,
+        assignedLineId: form.assignedLineId || undefined,
+      });
+      setForm({ name: "", email: "", password: "", role: "Captain", assignedLineId: "" });
+      setShowCreate(false);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to create user");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function changeRole(id, role) {
+    try {
+      await client.patch(`/users/${id}/role`, { role });
+      load();
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to change role");
+    }
+  }
+
+  async function reassignLine(id, lineId) {
+    if (!lineId) return;
+    await client.patch(`/users/${id}/reassign-line`, { lineId });
+    load();
+  }
+
+  return (
+    <div className="card">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h3 style={{ marginTop: 0 }}>Users</h3>
+        <button className="btn accent" onClick={() => setShowCreate(!showCreate)}>
+          {showCreate ? "Cancel" : "+ Create Account"}
+        </button>
+      </div>
+
+      {showCreate && (
+        <form onSubmit={handleCreate} className="card" style={{ background: "var(--color-bg)" }}>
+          <div className="grid cols-2">
+            <div className="form-row">
+              <label>Full Name</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </div>
+            <div className="form-row">
+              <label>Email</label>
+              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            </div>
+            <div className="form-row">
+              <label>Temporary Password</label>
+              <input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required minLength={6} placeholder="Share this with the user, they should change it on first login" />
+            </div>
+            <div className="form-row">
+              <label>Role</label>
+              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                <option value="Captain">Captain</option>
+                <option value="Engineer">Engineer</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </div>
+            {form.role === "Captain" && (
+              <div className="form-row">
+                <label>Assign to Line</label>
+                <select value={form.assignedLineId} onChange={(e) => setForm({ ...form, assignedLineId: e.target.value })}>
+                  <option value="">Unassigned (assign later)</option>
+                  {lines.map((l) => <option key={l._id} value={l._id}>{l.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          {error && <p className="error-text">{error}</p>}
+          <button className="btn accent" type="submit" disabled={creating}>
+            {creating ? "Creating..." : "Create Account"}
+          </button>
+        </form>
+      )}
+
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>Assigned Line</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u._id}>
+              <td>{u.name}</td>
+              <td>{u.email}</td>
+              <td>
+                <select value={u.role} onChange={(e) => changeRole(u._id, e.target.value)}>
+                  <option value="Captain">Captain</option>
+                  <option value="Engineer">Engineer</option>
+                  <option value="Admin">Admin</option>
+                </select>
+              </td>
+              <td>
+                {u.role === "Captain" ? (
+                  <select defaultValue={u.assignedLineId?._id || ""} onChange={(e) => reassignLine(u._id, e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {lines.map((l) => <option key={l._id} value={l._id}>{l.name}</option>)}
+                  </select>
+                ) : "—"}
+              </td>
+              <td>{u.isActive ? "Active" : "Deactivated"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="muted" style={{ marginTop: 10 }}>
+        Changing a Captain's assigned line here retains their previous assignment in history — it is not deleted.
+      </p>
     </div>
   );
 }

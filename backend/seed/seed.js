@@ -106,7 +106,17 @@ async function seed() {
 
   console.log("Creating placeholder user accounts...");
   const existingUsers = await User.countDocuments();
-  if (existingUsers === 0) {
+
+  // Force-reseed users if RESEED_USERS=true is set, regardless of whether
+  // accounts already exist. This is the fix for the "login fails after running
+  // seed a second time" problem - the original guard silently skipped user
+  // creation if any users existed, leaving you with lines/machines seeded but
+  // no usable accounts.
+  if (existingUsers === 0 || process.env.RESEED_USERS === "true") {
+    if (existingUsers > 0) {
+      console.log(`Removing ${existingUsers} existing user(s) and recreating...`);
+      await User.deleteMany({});
+    }
     const defaultPasswordHash = await bcrypt.hash("ChangeMe123!", 10);
 
     await User.create([

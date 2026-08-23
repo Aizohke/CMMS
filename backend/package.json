@@ -1,23 +1,28 @@
 {
   "name": "loreal-ea-cmms-backend",
   "version": "1.0.0",
-  "description": "Backend API for L'Oreal East Africa plant CMMS - industrial attachment prototype",
+  "description": "Backend API for L'Oreal East Africa plant CMMS",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node seed/seed.js"
+    "seed": "node seed/seed.js",
+    "reseed": "cross-env RESEED_USERS=true node seed/seed.js",
+    "check-db": "node scripts/checkDb.js",
+    "smoke": "node scripts/smokeTest.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "firebase-admin": "^12.3.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.0"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "nodemon": "^3.1.4"
   }
 }

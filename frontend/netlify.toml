@@ -1,0 +1,15 @@
+# Netlify build settings for the frontend.
+# Without the [[redirects]] rule below, React Router's client-side routes
+# (e.g. /admin, /machine/<id>) return a 404 from Netlify on refresh or direct
+# link, because Netlify otherwise looks for a matching physical file/folder
+# for every URL. This rule sends every path to index.html and lets React
+# Router take over from there.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

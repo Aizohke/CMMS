@@ -1,0 +1,28 @@
+# Render Blueprint. Optional: if this file is present, Render can detect it
+# automatically ("New +" -> "Blueprint") and pre-fill most of the backend
+# service setup for you. You still enter the secret values (MONGO_URI,
+# JWT_SECRET) yourself in Render's dashboard - they are never stored here.
+# If you'd rather click through Render's UI manually, see INSTALLATION.md
+# instead; this file is not required either way.
+
+services:
+  - type: web
+    name: loreal-ea-cmms-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGO_URI
+        sync: false # set manually in the Render dashboard - never commit this value
+      - key: JWT_SECRET
+        sync: false # set manually in the Render dashboard - never commit this value
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: PORT
+        value: 5000
+      - key: CORS_ORIGIN
+        sync: false # set to your deployed Netlify URL once you have it
+      - key: ESCALATION_CONTACT_EMAIL
+        sync: false
